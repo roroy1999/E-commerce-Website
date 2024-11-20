@@ -9,6 +9,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.monk.dto.ApplicableCoupons;
 import com.monk.model.Details;
 import com.monk.service.CouponService;
 
@@ -37,6 +38,17 @@ public class CouponController {
 		logger.info("Recieved Coupon is :{}",entity);
 		
 		return couponService.savaCoupon(entity);
+	}
+	
+	@PostMapping("/applicable-coupons")
+	public ApplicableCoupons applicableCoupons(@RequestBody Map<String, Object> entity) {
+		//TODO: process POST request
+		//System.out.println(entity);
+		logger.info("Recieved Coupon is :{}",entity);
+		
+		return couponService.applicableCoupons(entity);
+		
+		//return couponService.savaCoupon(entity);
 	}
 	
 	@GetMapping("/coupons")

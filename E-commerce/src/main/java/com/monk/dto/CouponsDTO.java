@@ -1,5 +1,11 @@
 package com.monk.dto;
 
-public class CouponsDTO {
+import lombok.Data;
 
+@Data
+public class CouponsDTO {
+	
+	int coupon_id;
+	String type;
+	int discount;
 }

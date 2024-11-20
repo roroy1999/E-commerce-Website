@@ -8,6 +8,7 @@ import jakarta.persistence.ManyToOne;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Data
 @NoArgsConstructor
@@ -22,6 +23,7 @@ public class Product {
 	private boolean free;
 	private int discount;
 	@JsonIgnore
+	@ToString.Exclude
 	@ManyToOne
 	Details details;
 }
