@@ -146,6 +146,7 @@ public class CouponService {
 		List<CouponsDTO> couponsDTOs = new ArrayList<>();
 		couponsDTOs.addAll(bxgyCoupon(products));
 		couponsDTOs.add(cartWiseCoupon(products));
+		couponsDTOs.addAll(productWiseCoupon(products));
 		//logger.info("bxgyCoupon : " + bxgyCoupon(products));
 		
 		applicableCoupons.setApplicable_coupons(couponsDTOs);
@@ -160,9 +161,6 @@ public class CouponService {
 		//logger.info("products : " + productFromDB.getDetails());
 	}
 	
-	public void productWiseCoupon() {
-		
-	}
 	public CouponsDTO cartWiseCoupon(List<Product> products) {
 		CouponsDTO couponsDTO = new CouponsDTO();
 		List<Details> detail_old = detailsRepository.findByType("cart-wise").orElse(new ArrayList<Details>());
@@ -192,6 +190,11 @@ public class CouponService {
 		return couponsDTO;
 		
 	}
+	
+//	uniqueDetails: [Details(couponId=52, type=bxgy, threshold=0, discount=0, productId=0, product=[], repition_limit=2), 
+//	                Details(couponId=102, type=bxgy, threshold=0, discount=0, productId=0, product=[Product(productId=5, quantity=1, price=0, free=true, discount=0), Product(productId=4, quantity=3, price=0, free=false, discount=0)], repition_limit=3), 
+//	                Details(couponId=55, type=bxgy, threshold=0, discount=0, productId=0, product=[Product(productId=2, quantity=3, price=0, free=false, discount=0)], repition_limit=2), 
+//	                Details(couponId=56, type=bxgy, threshold=0, discount=0, productId=0, product=[Product(productId=3, quantity=1, price=0, free=true, discount=0), Product(productId=1, quantity=3, price=0, free=false, discount=20)], repition_limit=2)] : 
 	public List<CouponsDTO> bxgyCoupon(List<Product> products) {
 		List<Details> details = detailsRepository.findByType("bxgy").orElse(new ArrayList<Details>());
 		//ApplicableCoupons applicableCoupons = new ApplicableCoupons();
@@ -215,7 +218,7 @@ public class CouponService {
 				}
 				//List<Product> productList =  presentDetails.getProduct();
 				int inCartProductQuantity = product.getQuantity();
-				int inCartProductprice = product.getPrice();
+				//int inCartProductprice = product.getPrice();
 				int acceptedProductQuntity = product_original.getQuantity();
 				if(presentDetails.getRepition_limit()>0 && inCartProductQuantity>= acceptedProductQuntity) {
 					presentDetails.setRepition_limit(presentDetails.getRepition_limit() - (inCartProductQuantity/acceptedProductQuntity));
@@ -240,11 +243,31 @@ public class CouponService {
 		}
 		return couponsDTOs;
 	}
-//	uniqueDetails: [Details(couponId=52, type=bxgy, threshold=0, discount=0, productId=0, product=[], repition_limit=2), 
-//	                Details(couponId=102, type=bxgy, threshold=0, discount=0, productId=0, product=[Product(productId=5, quantity=1, price=0, free=true, discount=0), Product(productId=4, quantity=3, price=0, free=false, discount=0)], repition_limit=3), 
-//	                Details(couponId=55, type=bxgy, threshold=0, discount=0, productId=0, product=[Product(productId=2, quantity=3, price=0, free=false, discount=0)], repition_limit=2), 
-//	                Details(couponId=56, type=bxgy, threshold=0, discount=0, productId=0, product=[Product(productId=3, quantity=1, price=0, free=true, discount=0), Product(productId=1, quantity=3, price=0, free=false, discount=20)], repition_limit=2)] : 
 
 
+	public List<CouponsDTO> productWiseCoupon(List<Product> products) {
+		List<CouponsDTO> couponsDTOs = new ArrayList<>();
+		for(Product productCart : products) {
+			Details details = detailsRepository.findByProductId(productCart.getProductId()).orElse(new Details());
+			Product product_original = productRepository.findById(productCart.getProductId()).orElse(new Product());
+			double discount = product_original.getDiscount();
+			if(discount>0) {
+				double total = 0.0;
+				double quantity = productCart.getQuantity();
+				double price = productCart.getPrice();
+				
+				total += (quantity*price);
+				int discountAmount = (int)((discount/100)*total);
+				CouponsDTO couponsDTO = new CouponsDTO();
+				couponsDTO.setCoupon_id(details.getCouponId());
+				couponsDTO.setDiscount(discountAmount);
+				couponsDTO.setType(details.getType());
+				couponsDTOs.add(couponsDTO);
+			}
+			
+		}
+		
+		return couponsDTOs;
+	}
 
 }
