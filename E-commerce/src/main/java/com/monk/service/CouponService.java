@@ -519,33 +519,6 @@ public class CouponService {
 		return "Coupon Deleted Successfully";
 	}
 
-	// {
-	// "coupon_id": 304,
-	// "details": {
-	// "get_products": [
-	// {
-	// "product_id": 3,
-	// "quantity": 3
-	// }
-	// ],
-	// "buy_products": [
-	// {
-	// "product_id": 4,
-	// "quantity": 6
-	// },
-	// {
-	// "product_id": 2,
-	// "quantity": 6
-	// },
-	// {
-	// "product_id": 1,
-	// "quantity": 3
-	// }
-	// ],
-	// "repition_limit": 4
-	// },
-	// "type": "bxgy"
-	// }
 	public String deleteBxgyCoupon(Details detail) {
 		List<Product> products = detail.getProduct();
 		products = products.stream().map(x -> {
@@ -562,6 +535,19 @@ public class CouponService {
 	public String deleteCartWiseCoupon(Details detail) {
 		detailsRepository.delete(detail);
 		return "Coupon Deleted Successfully";
+	}
+
+	public String deleteProduct(int id) {
+		// TODO Auto-generated method stub
+		Product product = productRepository.findById(id)
+				.orElseThrow(() -> new EntityNotFoundException("Product ID id Invalid"));
+		productRepository.delete(product);
+		return "Product Deleted Successfully";
+	}
+
+	public List<Product> getProducts() {
+		// TODO Auto-generated method stub
+		return productRepository.findAll();
 	}
 
 }
