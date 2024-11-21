@@ -42,6 +42,63 @@ public class CouponService {
 		
 	}
 	
+	public List<Map<String, Object>> getAllCoupons() {
+		List<Details> details = detailsRepository.findAll();
+		List<Map<String, Object>> coupons = new ArrayList<>();
+		for(Details detail : details) {
+			String type = detail.getType();
+			coupons.add(getCouponBasedOnType(detail,type));
+		}
+		
+		return coupons;
+	}
+	
+	public Map<String, Object> getCouponById(int id) {
+		// Need Handle here
+		Details detail = detailsRepository.findById(id).orElse(null);
+
+		return getCouponBasedOnType(detail,detail.getType());
+	}
+	
+	private Map<String, Object> getCouponBasedOnType(Details detail, String type) {
+	    Map<String, Object> coupon = new HashMap<>();
+	    Map<String, Object> couponDetail = new HashMap<>();
+	    coupon.put("type", type);
+	    coupon.put("coupon_id", detail.getCouponId());
+	    switch (type) {
+	        case "cart-wise":
+	            couponDetail.put("threshold", detail.getThreshold());
+	            couponDetail.put("discount", detail.getDiscount());
+	            break;
+	        case "product-wise":
+	            couponDetail.put("product_id", detail.getProductId());
+	            couponDetail.put("discount", detail.getDiscount());
+	            break;
+	        case "bxgy":
+	            List<Map<String, Integer>> getProducts = new ArrayList<>();
+	            List<Map<String, Integer>> buyProducts = new ArrayList<>();
+	            for (Product product : detail.getProduct()) {
+	                Map<String, Integer> productDetail = Map.of(
+	                    "product_id", product.getProductId(),
+	                    "quantity", product.getQuantity()
+	                );
+	                if (product.isFree()) {
+	                    getProducts.add(productDetail);
+	                } else {
+	                    buyProducts.add(productDetail);
+	                }
+	            }
+	            couponDetail.put("get_products", getProducts);
+	            couponDetail.put("buy_products", buyProducts);
+	            couponDetail.put("repition_limit", detail.getRepition_limit());
+	            break;
+	        default:
+	            throw new IllegalArgumentException("Unknown coupon type: " + type);
+	    }
+	    coupon.put("details", couponDetail);
+	    return coupon;
+	}
+
 	public String saveBasedOnType(Details details) {
 		
 		if(details.getType().equals("NoType") || (!details.getType().equals("cart-wise")
@@ -114,17 +171,6 @@ public class CouponService {
 		return details;
 	}
 	
-	public List<Details> getAllCoupons() {
-		return detailsRepository.findAll();
-	}
-
-//		{"cart": {
-//			"items": [
-//			{"product_id": 1, "quantity": 6, "price": 50}, // Product X
-//			{"product_id": 2, "quantity": 3, "price": 30}, // Product Y
-//			{"product_id": 3, "quantity": 2, "price": 25} // Product Z
-//			]
-//			}}
 	@SuppressWarnings("unchecked")
 	public ApplicableCoupons applicableCoupons(Map<String, Object> entity) {
 		Map<String,Object> cart = (Map<String, Object>) entity.getOrDefault("cart", new HashMap<>());
@@ -184,10 +230,6 @@ public class CouponService {
 		
 	}
 	
-//	uniqueDetails: [Details(couponId=52, type=bxgy, threshold=0, discount=0, productId=0, product=[], repition_limit=2), 
-//	                Details(couponId=102, type=bxgy, threshold=0, discount=0, productId=0, product=[Product(productId=5, quantity=1, price=0, free=true, discount=0), Product(productId=4, quantity=3, price=0, free=false, discount=0)], repition_limit=3), 
-//	                Details(couponId=55, type=bxgy, threshold=0, discount=0, productId=0, product=[Product(productId=2, quantity=3, price=0, free=false, discount=0)], repition_limit=2), 
-//	                Details(couponId=56, type=bxgy, threshold=0, discount=0, productId=0, product=[Product(productId=3, quantity=1, price=0, free=true, discount=0), Product(productId=1, quantity=3, price=0, free=false, discount=20)], repition_limit=2)] : 
 	public List<CouponsDTO> bxgyCoupon(List<Product> products) {
 		List<Details> details = detailsRepository.findByType("bxgy").orElse(new ArrayList<Details>());
 		//ApplicableCoupons applicableCoupons = new ApplicableCoupons();
@@ -236,12 +278,6 @@ public class CouponService {
 		}
 		return couponsDTOs;
 	}
-
-//	{
-//        "coupon_id": 153,
-//        "type": "product-wise",
-//        "discount": 2
-//    }
 
 	public List<CouponsDTO> productWiseCoupon(List<Product> products) {
 		List<CouponsDTO> couponsDTOs = new ArrayList<>();

@@ -56,9 +56,21 @@ public class CouponController {
 		return couponService.applyCouponsById(entity,id);
 	}
 	
+//	● GET /coupons: Retrieve all coupons.
 	@GetMapping("/coupons")
-	public List<Details> getAllCoupon() {
+	public List<Map<String, Object>> getAllCoupon() {
 		return couponService.getAllCoupons();
 	}
+	
+//	● GET /coupons/{id}: Retrieve a specific coupon by its ID.
+	@GetMapping("/coupons/{id}")
+	public Map<String, Object> getCouponById(@PathVariable("id") int id) {
+		return couponService.getCouponById(id);
+	}
+	
+	
+//	● PUT /coupons/{id}: Update a specific coupon by its ID.
+//	● DELETE /coupons/{id}: Delete a specific coupon by its ID.
+	
 	
 }
