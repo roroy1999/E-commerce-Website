@@ -30,6 +30,7 @@ public class CouponController {
 		this.couponService = couponService;
 	}
 
+	// ● POST /coupons: Create a new coupon.
 	@PostMapping("/coupons")
 	public String addCoupons(@RequestBody Map<String, Object> entity) {
 		logger.info("Recieved Coupon is :{}", entity);
@@ -37,6 +38,8 @@ public class CouponController {
 		return couponService.savaCoupon(entity);
 	}
 
+	// ● POST /applicable-coupons: Fetch all applicable coupons for a given cart and
+	// calculate the total discount that will be applied by each coupon.
 	@PostMapping("/applicable-coupons")
 	public ApplicableCoupons applicableCoupons(@RequestBody Map<String, Object> entity) {
 		logger.info("Recieved Items are :{}", entity);
@@ -44,6 +47,8 @@ public class CouponController {
 		return couponService.applicableCoupons(entity);
 	}
 
+	// ● POST /apply-coupon/{id}: Apply a specific coupon to the cart and return the
+	// updated cart with discounted prices for each item.
 	@PostMapping(path = "/apply-coupon/{id}")
 	public UpdatedCartDTO applyCouponById(@RequestBody Map<String, Object> entity, @PathVariable("id") int id) {
 		logger.info("Recieved cart items are :{} and applied coupon is {}", entity, id);
