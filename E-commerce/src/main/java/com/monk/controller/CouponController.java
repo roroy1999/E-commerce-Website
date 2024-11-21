@@ -71,7 +71,7 @@ public class CouponController {
 
 	// ● DELETE /coupons/{id}: Delete a specific coupon by its ID.
 	@DeleteMapping("/coupons/{id}")
-	public Map<String, Object> deleteCouponById(@PathVariable("id") int id) {
+	public String deleteCouponById(@PathVariable("id") int id) {
 		return couponService.deleteCouponById(id);
 	}
 

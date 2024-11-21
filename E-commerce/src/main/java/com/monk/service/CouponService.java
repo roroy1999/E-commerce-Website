@@ -438,6 +438,7 @@ public class CouponService {
 		detailsRepository.save(detail);
 	}
 
+	@SuppressWarnings("unchecked")
 	private void updateBxgy(Details detail, Map<String, Object> couponDetail) {
 		detail.setRepition_limit((int) couponDetail.get("repition_limit"));
 
@@ -494,9 +495,70 @@ public class CouponService {
 		});
 	}
 
-	public Map<String, Object> deleteCouponById(int id) {
-		// TODO Auto-generated method stub
-		return null;
+	public String deleteCouponById(int id) {
+		Details detail = detailsRepository.findById(id).orElseThrow(()-> new IllegalArgumentException("Invalid Coupon"));
+		switch (detail.getType()) {
+		case "cart-wise":
+			return deleteCartWiseCoupon(detail);
+		case "product-wise":
+			return deleteProductWiseCoupon(detail);
+		case "bxgy":
+			return deleteBxgyCoupon(detail);
+		default:
+			throw new IllegalArgumentException("Unknown coupon type: " + detail.getType());
+		}
+	}
+	
+	public String deleteProductWiseCoupon(Details detail) {
+		Product product = productRepository.findById(detail.getProductId()).orElseThrow(()-> 
+		new EntityNotFoundException("Product not found"));
+		product.setDiscount(0);
+		productRepository.save(product);
+		detailsRepository.delete(detail);
+		return "Coupon Deleted Successfully";
+	}
+	
+//	{
+//        "coupon_id": 304,
+//        "details": {
+//            "get_products": [
+//                {
+//                    "product_id": 3,
+//                    "quantity": 3
+//                }
+//            ],
+//            "buy_products": [
+//                {
+//                    "product_id": 4,
+//                    "quantity": 6
+//                },
+//                {
+//                    "product_id": 2,
+//                    "quantity": 6
+//                },
+//                {
+//                    "product_id": 1,
+//                    "quantity": 3
+//                }
+//            ],
+//            "repition_limit": 4
+//        },
+//        "type": "bxgy"
+//    }
+	public String deleteBxgyCoupon(Details detail) {
+		List<Product> products = detail.getProduct();
+		products = products.stream().map(x->{
+			x.setDetails(null);
+			return x;}).collect(Collectors.toList());
+		
+		productRepository.saveAll(products);
+		detail.setProduct(null);
+		detailsRepository.delete(detail);
+		return "Coupon Deleted Successfully";
+	}
+	public String deleteCartWiseCoupon(Details detail) {
+		detailsRepository.delete(detail);
+		return "Coupon Deleted Successfully";
 	}
 
 }
