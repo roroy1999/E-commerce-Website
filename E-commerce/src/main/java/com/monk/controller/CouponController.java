@@ -11,9 +11,11 @@ import com.monk.dto.UpdatedCartDTO;
 import com.monk.model.Details;
 import com.monk.service.CouponService;
 
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 
@@ -70,7 +72,15 @@ public class CouponController {
 	
 	
 //	● PUT /coupons/{id}: Update a specific coupon by its ID.
+	@PutMapping("/coupons/{id}")
+	public String updateCouponById(@PathVariable("id") int id,@RequestBody Map<String, Object> entity) {
+		return couponService.updateCouponById(id,entity);
+	}
 //	● DELETE /coupons/{id}: Delete a specific coupon by its ID.
+	@DeleteMapping("/coupons/{id}")
+	public Map<String, Object> deleteCouponById(@PathVariable("id") int id) {
+		return couponService.deleteCouponById(id);
+	}
 	
 	
 }

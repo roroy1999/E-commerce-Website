@@ -19,6 +19,8 @@ import com.monk.model.Product;
 import com.monk.repository.DetailsRepository;
 import com.monk.repository.ProductRepository;
 
+import jakarta.persistence.EntityNotFoundException;
+
 @Service
 public class CouponService {
 	DetailsRepository detailsRepository;
@@ -390,6 +392,145 @@ public class CouponService {
 		}
 		
 		return updatedCartDTO;
+	}
+	
+//	{
+//        "coupon_id": 152,
+//        "details": {
+//            "discount": 10,
+//            "threshold": 100
+//        },
+//        "type": "cart-wise"
+//    },
+//    {
+//        "coupon_id": 153,
+//        "details": {
+//            "product_id": 1,
+//            "discount": 20
+//        },
+//        "type": "product-wise"
+//    },
+//    {
+//        "coupon_id": 154,
+//        "details": {
+//            "get_products": [
+//                {
+//                    "quantity": 1,
+//                    "product_id": 3
+//                }
+//            ],
+//            "buy_products": [
+//                {
+//                    "quantity": 3,
+//                    "product_id": 2
+//                },
+//                {
+//                    "quantity": 3,
+//                    "product_id": 1
+//                }
+//            ],
+//            "repition_limit": 2
+//        },
+//        "type": "bxgy"
+//    }
+
+	@SuppressWarnings("unchecked")
+	public String updateCouponById(int id, Map<String, Object> entity) {
+	    Details detail = detailsRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Details not found"));
+	    Map<String, Object> couponDetail = (Map<String, Object>) entity.get("details");
+
+	    switch (detail.getType()) {
+	        case "cart-wise":
+	            updateCartWise(detail, couponDetail);
+	            break;
+	        case "product-wise":
+	            updateProductWise(detail, couponDetail);
+	            break;
+	        case "bxgy":
+	            updateBxgy(detail, couponDetail);
+	            break;
+	        default:
+	            throw new IllegalArgumentException("Unknown coupon type: " + detail.getType());
+	    }
+
+	    return "Coupon Updated Successfully";
+	}
+
+	private void updateCartWise(Details detail, Map<String, Object> couponDetail) {
+	    detail.setDiscount((int) couponDetail.get("discount"));
+	    detail.setThreshold((int) couponDetail.get("threshold"));
+	    detailsRepository.save(detail);
+	}
+
+	private void updateProductWise(Details detail, Map<String, Object> couponDetail) {
+	    detail.setDiscount((int) couponDetail.get("discount"));
+	    int productId = (int) couponDetail.get("product_id");
+	    Product product = productRepository.findById(productId)
+	            .orElseGet(() -> new Product(productId, 0, 0, false, 0, detail));
+	    product.setDiscount((int) couponDetail.get("discount"));
+	    productRepository.save(product);
+	    detailsRepository.save(detail);
+	}
+
+	private void updateBxgy(Details detail, Map<String, Object> couponDetail) {
+	    detail.setRepition_limit((int) couponDetail.get("repition_limit"));
+	    
+	    List<Map<String, Object>> buyProducts = (List<Map<String, Object>>) couponDetail
+	    		.getOrDefault("buy_products", new ArrayList<>());
+	    List<Map<String, Object>> getProducts = (List<Map<String, Object>>) couponDetail
+	    		.getOrDefault("get_products", new ArrayList<>());
+	    List<Product> currentProducts = new ArrayList<>(detail.getProduct());
+	    List<Product> toRemove = new ArrayList<>();
+	    for (Product product : currentProducts) {
+	        boolean isBuyProduct = updateProductIfExists(product, buyProducts, false);
+	        boolean isGetProduct = updateProductIfExists(product, getProducts, true);
+
+	        if (!isBuyProduct && !isGetProduct) {
+	            toRemove.add(product);
+	        }
+	    }
+	    for (Product product : toRemove) {
+	        detail.getProduct().remove(product);
+	        currentProducts.remove(product);
+	        productRepository.delete(product);
+	    }
+	    addNewProducts(currentProducts, buyProducts, false ,detail);
+	    addNewProducts(currentProducts, getProducts, true ,detail);
+	    
+	    logger.info("currentProducts : " + currentProducts);
+	    detail.setProduct(currentProducts);
+	    detailsRepository.save(detail);
+	}
+
+	private boolean updateProductIfExists(Product product, List<Map<String, Object>> products, boolean isFree) {
+	    for (Map<String, Object> productData : products) {
+	        if (product.getProductId() == (int) productData.get("product_id")) {
+	            product.setQuantity((int) productData.get("quantity"));
+	            product.setFree(isFree);
+	            productRepository.save(product);
+	            return true;
+	        }
+	    }
+	    return false;
+	}
+
+	private void addNewProducts(List<Product> currentProducts, List<Map<String, Object>> products, boolean isFree, Details detail) {
+	    products.forEach(productData -> {
+	        int productId = (int) productData.get("product_id");
+	        boolean exists = currentProducts.stream()
+	                .anyMatch(product -> product.getProductId() == productId);
+	        if (!exists) {
+	            Product newProduct = new Product(productId, (int) productData.get("quantity"), 0, isFree, 0, detail);
+	            currentProducts.add(newProduct);
+	            productRepository.save(newProduct);
+	        }
+	    });
+	}
+
+
+	public Map<String, Object> deleteCouponById(int id) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }
