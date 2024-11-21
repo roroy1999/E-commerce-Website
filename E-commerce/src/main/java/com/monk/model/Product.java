@@ -15,7 +15,7 @@ import lombok.ToString;
 @AllArgsConstructor
 @Entity
 public class Product {
-	
+
 	@Id
 	private int productId;
 	private int quantity;

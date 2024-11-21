@@ -24,94 +24,90 @@ import jakarta.persistence.EntityNotFoundException;
 @Service
 public class CouponService {
 	DetailsRepository detailsRepository;
-	
+
 	ProductRepository productRepository;
-	
+
 	@Autowired
 	private Logger logger;
 
-	public CouponService(DetailsRepository detailsRepository,ProductRepository productRepository) {
+	public CouponService(DetailsRepository detailsRepository, ProductRepository productRepository) {
 		this.detailsRepository = detailsRepository;
 		this.productRepository = productRepository;
 	}
 
 	public String savaCoupon(Map<String, Object> entity) {
-		// TODO Auto-generated method stub
-		
+
 		Details details = createDetails(entity);
 		return saveBasedOnType(details);
-		
-		
+
 	}
-	
+
 	public List<Map<String, Object>> getAllCoupons() {
 		List<Details> details = detailsRepository.findAll();
 		List<Map<String, Object>> coupons = new ArrayList<>();
-		for(Details detail : details) {
+		for (Details detail : details) {
 			String type = detail.getType();
-			coupons.add(getCouponBasedOnType(detail,type));
+			coupons.add(getCouponBasedOnType(detail, type));
 		}
-		
+
 		return coupons;
 	}
-	
+
 	public Map<String, Object> getCouponById(int id) {
 		// Need Handle here
 		Details detail = detailsRepository.findById(id).orElse(null);
 
-		return getCouponBasedOnType(detail,detail.getType());
+		return getCouponBasedOnType(detail, detail.getType());
 	}
-	
+
 	private Map<String, Object> getCouponBasedOnType(Details detail, String type) {
-	    Map<String, Object> coupon = new HashMap<>();
-	    Map<String, Object> couponDetail = new HashMap<>();
-	    coupon.put("type", type);
-	    coupon.put("coupon_id", detail.getCouponId());
-	    switch (type) {
-	        case "cart-wise":
-	            couponDetail.put("threshold", detail.getThreshold());
-	            couponDetail.put("discount", detail.getDiscount());
-	            break;
-	        case "product-wise":
-	            couponDetail.put("product_id", detail.getProductId());
-	            couponDetail.put("discount", detail.getDiscount());
-	            break;
-	        case "bxgy":
-	            List<Map<String, Integer>> getProducts = new ArrayList<>();
-	            List<Map<String, Integer>> buyProducts = new ArrayList<>();
-	            for (Product product : detail.getProduct()) {
-	                Map<String, Integer> productDetail = Map.of(
-	                    "product_id", product.getProductId(),
-	                    "quantity", product.getQuantity()
-	                );
-	                if (product.isFree()) {
-	                    getProducts.add(productDetail);
-	                } else {
-	                    buyProducts.add(productDetail);
-	                }
-	            }
-	            couponDetail.put("get_products", getProducts);
-	            couponDetail.put("buy_products", buyProducts);
-	            couponDetail.put("repition_limit", detail.getRepition_limit());
-	            break;
-	        default:
-	            throw new IllegalArgumentException("Unknown coupon type: " + type);
-	    }
-	    coupon.put("details", couponDetail);
-	    return coupon;
+		Map<String, Object> coupon = new HashMap<>();
+		Map<String, Object> couponDetail = new HashMap<>();
+		coupon.put("type", type);
+		coupon.put("coupon_id", detail.getCouponId());
+		switch (type) {
+			case "cart-wise":
+				couponDetail.put("threshold", detail.getThreshold());
+				couponDetail.put("discount", detail.getDiscount());
+				break;
+			case "product-wise":
+				couponDetail.put("product_id", detail.getProductId());
+				couponDetail.put("discount", detail.getDiscount());
+				break;
+			case "bxgy":
+				List<Map<String, Integer>> getProducts = new ArrayList<>();
+				List<Map<String, Integer>> buyProducts = new ArrayList<>();
+				for (Product product : detail.getProduct()) {
+					Map<String, Integer> productDetail = Map.of(
+							"product_id", product.getProductId(),
+							"quantity", product.getQuantity());
+					if (product.isFree()) {
+						getProducts.add(productDetail);
+					} else {
+						buyProducts.add(productDetail);
+					}
+				}
+				couponDetail.put("get_products", getProducts);
+				couponDetail.put("buy_products", buyProducts);
+				couponDetail.put("repition_limit", detail.getRepition_limit());
+				break;
+			default:
+				throw new IllegalArgumentException("Unknown coupon type: " + type);
+		}
+		coupon.put("details", couponDetail);
+		return coupon;
 	}
 
 	public String saveBasedOnType(Details details) {
-		
-		if(details.getType().equals("NoType") || (!details.getType().equals("cart-wise")
+
+		if (details.getType().equals("NoType") || (!details.getType().equals("cart-wise")
 				&& !details.getType().equals("product-wise") && !details.getType().equals("bxgy"))) {
 			return "Invalide Type";
-		}
-		else if(details.getType().equals("product-wise")&& details.getProduct()!=new ArrayList<Product>()) {
+		} else if (details.getType().equals("product-wise") && details.getProduct() != new ArrayList<Product>()) {
 			int id = details.getProduct().get(0).getProductId();
-			Product product =productRepository.findById(id).orElse(new Product());
+			Product product = productRepository.findById(id).orElse(new Product());
 			product.setProductId(id);
-			product.setDiscount(details.getDiscount());			
+			product.setDiscount(details.getDiscount());
 			productRepository.save(product);
 			details.setProductId(id);
 			Details detail_old = detailsRepository.findByProductId(id).orElse(details);
@@ -119,22 +115,24 @@ public class CouponService {
 			detailsRepository.save(detail_old);
 			return "Product Discount was Added";
 		}
-		
-		detailsRepository.save(details);		
+
+		detailsRepository.save(details);
 		return "Coupon is Added";
-		
+
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	public Details createDetails(Map<String, Object> entity) {
 		Details details = new Details();
-		String type = (String)entity.getOrDefault("type","NoType");
-		Map<String, Object> detail = (Map<String, Object>) entity.getOrDefault("details",new HashMap<>());
-		int discount = (int) detail.getOrDefault("discount",0);
-		int threshold = (int) detail.getOrDefault("threshold",0);
-		int repition_limit = (int) detail.getOrDefault("repition_limit",0);
-		List<Map<String, Object>>  buyProducts = (List<Map<String, Object>>) detail.getOrDefault("buy_products",new ArrayList<>());
-		List<Map<String, Object>>  getProducts = (List<Map<String, Object>>) detail.getOrDefault("get_products",new ArrayList<>());
+		String type = (String) entity.getOrDefault("type", "NoType");
+		Map<String, Object> detail = (Map<String, Object>) entity.getOrDefault("details", new HashMap<>());
+		int discount = (int) detail.getOrDefault("discount", 0);
+		int threshold = (int) detail.getOrDefault("threshold", 0);
+		int repition_limit = (int) detail.getOrDefault("repition_limit", 0);
+		List<Map<String, Object>> buyProducts = (List<Map<String, Object>>) detail.getOrDefault("buy_products",
+				new ArrayList<>());
+		List<Map<String, Object>> getProducts = (List<Map<String, Object>>) detail.getOrDefault("get_products",
+				new ArrayList<>());
 		List<Product> products = new ArrayList<>();
 		logger.info("Products are : " + products);
 		details.setType(type);
@@ -142,137 +140,145 @@ public class CouponService {
 		details.setThreshold(threshold);
 		details.setDiscount(discount);
 		for (Map<String, Object> item : getProducts) {
-			//Product product = new Product(item.get("product_id")),item.get("quantity")), null, true,null);
-			Product product = productRepository.findById((int)item.getOrDefault("product_id",0)).orElse(new Product());
-			product.setProductId((int)item.getOrDefault("product_id",0));
+			// Product product = new Product(item.get("product_id")),item.get("quantity")),
+			// null, true,null);
+			Product product = productRepository.findById((int) item.getOrDefault("product_id", 0))
+					.orElse(new Product());
+			product.setProductId((int) item.getOrDefault("product_id", 0));
 			product.setDetails(details);
 			product.setFree(true);
-			product.setPrice((int) item.getOrDefault("price",0));
-			product.setQuantity((int) item.getOrDefault("quantity",0));
+			product.setPrice((int) item.getOrDefault("price", 0));
+			product.setQuantity((int) item.getOrDefault("quantity", 0));
 			products.add(product);
 		}
 		for (Map<String, Object> item : buyProducts) {
-			//Product product = new Product(item.get("product_id")),item.get("quantity")), null, true,null);
-			Product product = productRepository.findById((int)item.getOrDefault("product_id",0)).orElse(new Product());
-			product.setProductId((int)item.getOrDefault("product_id",0));
+			// Product product = new Product(item.get("product_id")),item.get("quantity")),
+			// null, true,null);
+			Product product = productRepository.findById((int) item.getOrDefault("product_id", 0))
+					.orElse(new Product());
+			product.setProductId((int) item.getOrDefault("product_id", 0));
 			product.setDetails(details);
 			product.setFree(false);
-			product.setPrice((int) item.getOrDefault("price",0));
-			product.setQuantity((int) item.getOrDefault("quantity",0));
+			product.setPrice((int) item.getOrDefault("price", 0));
+			product.setQuantity((int) item.getOrDefault("quantity", 0));
 			products.add(product);
 		}
-		if((int)detail.getOrDefault("product_id",0)!=0) {
+		if ((int) detail.getOrDefault("product_id", 0) != 0) {
 			Product product = new Product();
-			int productId = (int) detail.getOrDefault("product_id",0);
+			int productId = (int) detail.getOrDefault("product_id", 0);
 			product.setProductId(productId);
 			product.setDiscount(discount);
-			discount=0;
+			discount = 0;
 			products.add(product);
 		}
 		details.setProduct(products);
 		return details;
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	public ApplicableCoupons applicableCoupons(Map<String, Object> entity) {
-		Map<String,Object> cart = (Map<String, Object>) entity.getOrDefault("cart", new HashMap<>());
-		List<Map<String,Object>> items =  (List<Map<String,Object>>) cart.getOrDefault("items", new ArrayList<>());
-		//logger.info("items : " + items);
+		Map<String, Object> cart = (Map<String, Object>) entity.getOrDefault("cart", new HashMap<>());
+		List<Map<String, Object>> items = (List<Map<String, Object>>) cart.getOrDefault("items", new ArrayList<>());
+		// logger.info("items : " + items);
 		List<Product> products = new ArrayList<>();
 		for (Map<String, Object> item : items) {
-			//Product product = new Product(item.get("product_id")),item.get("quantity")), null, true,null);
+			// Product product = new Product(item.get("product_id")),item.get("quantity")),
+			// null, true,null);
 			Product product = new Product();
-			product.setProductId((int)item.getOrDefault("product_id",0));
-			product.setPrice((int) item.getOrDefault("price",0));
-			product.setQuantity((int) item.getOrDefault("quantity",0));
+			product.setProductId((int) item.getOrDefault("product_id", 0));
+			product.setPrice((int) item.getOrDefault("price", 0));
+			product.setQuantity((int) item.getOrDefault("quantity", 0));
 			products.add(product);
 		}
-		//logger.info("products : " + products);
+		// logger.info("products : " + products);
 		ApplicableCoupons applicableCoupons = new ApplicableCoupons();
-
 
 		List<CouponsDTO> couponsDTOs = new ArrayList<>();
 		couponsDTOs.addAll(bxgyCoupon(products));
 		couponsDTOs.add(cartWiseCoupon(products));
 		couponsDTOs.addAll(productWiseCoupon(products));
-		//logger.info("bxgyCoupon : " + bxgyCoupon(products));
-		
+		// logger.info("bxgyCoupon : " + bxgyCoupon(products));
+
 		applicableCoupons.setApplicable_coupons(couponsDTOs);
-		
+
 		return applicableCoupons;
 	}
-	
+
 	public CouponsDTO cartWiseCoupon(List<Product> products) {
 		CouponsDTO couponsDTO = new CouponsDTO();
 		List<Details> detail_old = detailsRepository.findByType("cart-wise").orElse(new ArrayList<Details>());
 		logger.info("details cart wise : " + detail_old.get(0));
 		Details details = detail_old.get(0);
-		double total =0;
-		double threshold=details.getThreshold();
-		double discount=details.getDiscount();
-		
-		for(Product product : products) {
+		double total = 0;
+		double threshold = details.getThreshold();
+		double discount = details.getDiscount();
+
+		for (Product product : products) {
 			double quantity = product.getQuantity();
 			double price = product.getPrice();
-			total += (quantity*price);
+			total += (quantity * price);
 		}
-		int part=0;
-		if(total>threshold) {
+		int part = 0;
+		if (total > threshold) {
 			part = (int) ((discount / 100) * total);
-//			logger.info("Total: {}, Discount Percentage: {}, Discount Amount: {}", total, discount, part);
-//		    System.out.println("Total Amount: " + total);
-//		    System.out.println("Discount Applied: " + part);
+			// logger.info("Total: {}, Discount Percentage: {}, Discount Amount: {}", total,
+			// discount, part);
+			// System.out.println("Total Amount: " + total);
+			// System.out.println("Discount Applied: " + part);
 		}
-		
+
 		couponsDTO.setCoupon_id(details.getCouponId());
 		couponsDTO.setDiscount(part);
 		couponsDTO.setType(details.getType());
 
 		return couponsDTO;
-		
+
 	}
-	
+
 	public List<CouponsDTO> bxgyCoupon(List<Product> products) {
 		List<Details> details = detailsRepository.findByType("bxgy").orElse(new ArrayList<Details>());
-		//ApplicableCoupons applicableCoupons = new ApplicableCoupons();
+		// ApplicableCoupons applicableCoupons = new ApplicableCoupons();
 		List<CouponsDTO> couponsDTOs = new ArrayList<>();
-	    Map<Integer, Details> uniqueDetailsMap = details.stream()
-	        .collect(Collectors.toMap(Details::getCouponId, detail -> detail, (existing, replacement) -> existing));
+		Map<Integer, Details> uniqueDetailsMap = details.stream()
+				.collect(Collectors.toMap(Details::getCouponId, detail -> detail, (existing, replacement) -> existing));
 
-	    List<Details> uniqueDetails = new ArrayList<>(uniqueDetailsMap.values());
-	    //logger.info("uniqueDetails: {} : ", uniqueDetails);
-		for(Product product : products) {
-			
+		List<Details> uniqueDetails = new ArrayList<>(uniqueDetailsMap.values());
+		// logger.info("uniqueDetails: {} : ", uniqueDetails);
+		for (Product product : products) {
+
 			Product product_original = productRepository.findById(product.getProductId()).orElse(new Product());
-			if(!product_original.isFree()) {				
+			if (!product_original.isFree()) {
 				Details productDetails = product_original.getDetails();
-				Details presentDetails= new Details();
-				for(Details det :uniqueDetails) {
-					if(det.getCouponId()==productDetails.getCouponId()) {
+				Details presentDetails = new Details();
+				for (Details det : uniqueDetails) {
+					if (det.getCouponId() == productDetails.getCouponId()) {
 						presentDetails = det;
 						break;
 					}
 				}
-				//List<Product> productList =  presentDetails.getProduct();
+				// List<Product> productList = presentDetails.getProduct();
 				int inCartProductQuantity = product.getQuantity();
-				//int inCartProductprice = product.getPrice();
+				// int inCartProductprice = product.getPrice();
 				int acceptedProductQuntity = product_original.getQuantity();
-				if(presentDetails.getRepition_limit()>0 && inCartProductQuantity>= acceptedProductQuntity) {
-					presentDetails.setRepition_limit(presentDetails.getRepition_limit() - (inCartProductQuantity/acceptedProductQuntity));
+				if (presentDetails.getRepition_limit() > 0 && inCartProductQuantity >= acceptedProductQuntity) {
+					presentDetails.setRepition_limit(
+							presentDetails.getRepition_limit() - (inCartProductQuantity / acceptedProductQuntity));
 					List<Product> freeProducts = presentDetails.getProduct();
-					Product freeProduct = freeProducts.stream().filter(x->x.isFree()).findFirst().orElse(null);
-					Product productCart = products.stream().filter(x->x.getProductId()==freeProduct.getProductId()).findFirst().orElse(null);
-					int freePrice =productCart.getPrice();
-					int discount = (inCartProductQuantity/acceptedProductQuntity)*freePrice;
+					Product freeProduct = freeProducts.stream().filter(x -> x.isFree()).findFirst().orElse(null);
+					Product productCart = products.stream().filter(x -> x.getProductId() == freeProduct.getProductId())
+							.findFirst().orElse(null);
+					int freePrice = productCart.getPrice();
+					int discount = (inCartProductQuantity / acceptedProductQuntity) * freePrice;
 					final int id = presentDetails.getCouponId();
-					CouponsDTO couponsDTO_Old = couponsDTOs.stream().filter(x->x.getCoupon_id()==id).findFirst().orElse(null);
-					if(couponsDTO_Old==null) {
+					CouponsDTO couponsDTO_Old = couponsDTOs.stream().filter(x -> x.getCoupon_id() == id).findFirst()
+							.orElse(null);
+					if (couponsDTO_Old == null) {
 						CouponsDTO couponsDTO = new CouponsDTO();
 						couponsDTO.setType("bxgy");
 						couponsDTO.setDiscount(discount);
 						couponsDTO.setCoupon_id(presentDetails.getCouponId());
 						couponsDTOs.add(couponsDTO);
-					}else {						
+					} else {
 						couponsDTO_Old.setDiscount(couponsDTO_Old.getDiscount() + discount);
 					}
 				}
@@ -283,250 +289,210 @@ public class CouponService {
 
 	public List<CouponsDTO> productWiseCoupon(List<Product> products) {
 		List<CouponsDTO> couponsDTOs = new ArrayList<>();
-		for(Product productCart : products) {
+		for (Product productCart : products) {
 			Details details = detailsRepository.findByProductId(productCart.getProductId()).orElse(new Details());
 			Product product_original = productRepository.findById(productCart.getProductId()).orElse(new Product());
 			double discount = product_original.getDiscount();
-			if(discount>0) {
+			if (discount > 0) {
 				double total = 0.0;
 				double quantity = productCart.getQuantity();
 				double price = productCart.getPrice();
-				
-				total += (quantity*price);
-				int discountAmount = (int)((discount/100)*total);
+
+				total += (quantity * price);
+				int discountAmount = (int) ((discount / 100) * total);
 				CouponsDTO couponsDTO = new CouponsDTO();
 				couponsDTO.setCoupon_id(details.getCouponId());
 				couponsDTO.setDiscount(discountAmount);
 				couponsDTO.setType(details.getType());
 				couponsDTOs.add(couponsDTO);
 			}
-			
+
 		}
-		
+
 		return couponsDTOs;
 	}
 
 	@SuppressWarnings("unchecked")
 	public UpdatedCartDTO applyCouponsById(Map<String, Object> entity, int id) {
-		Map<String,Object> cart = (Map<String, Object>) entity.getOrDefault("cart", new HashMap<>());
-		List<Map<String,Object>> items =  (List<Map<String,Object>>) cart.getOrDefault("items", new ArrayList<>());
+		Map<String, Object> cart = (Map<String, Object>) entity.getOrDefault("cart", new HashMap<>());
+		List<Map<String, Object>> items = (List<Map<String, Object>>) cart.getOrDefault("items", new ArrayList<>());
 		List<Map<String, Object>> productMapList = new ArrayList<>();
 		List<Product> products = new ArrayList<>();
 		for (Map<String, Object> item : items) {
 			Map<String, Object> productMap = new HashMap<>();
 			Product product = new Product();
-			product.setProductId((int)item.getOrDefault("product_id",0));
-			productMap.put("product_id",product.getProductId());
-			product.setPrice((int) item.getOrDefault("price",0));
-			productMap.put("price",product.getPrice());
-			product.setQuantity((int) item.getOrDefault("quantity",0));
-			productMap.put("quantity",product.getQuantity());
+			product.setProductId((int) item.getOrDefault("product_id", 0));
+			productMap.put("product_id", product.getProductId());
+			product.setPrice((int) item.getOrDefault("price", 0));
+			productMap.put("price", product.getPrice());
+			product.setQuantity((int) item.getOrDefault("quantity", 0));
+			productMap.put("quantity", product.getQuantity());
 			productMap.put("total_discount", 0);
 			products.add(product);
 			productMapList.add(productMap);
 		}
 		ApplicableCoupons applicableCoupons = applicableCoupons(entity);
-		List<CouponsDTO> coupons =  applicableCoupons.getApplicable_coupons();
-		
-		CouponsDTO coupon = coupons.stream().filter(x->x.getCoupon_id()==id).findFirst().orElse(null);
-		double totalPrice = products.stream().reduce(0.0,(c,y)->c+(y.getPrice()*y.getQuantity()),Double::sum);
-//		logger.info("Total price : " + totalPrice);
+		List<CouponsDTO> coupons = applicableCoupons.getApplicable_coupons();
+
+		CouponsDTO coupon = coupons.stream().filter(x -> x.getCoupon_id() == id).findFirst().orElse(null);
+		double totalPrice = products.stream().reduce(0.0, (c, y) -> c + (y.getPrice() * y.getQuantity()), Double::sum);
+		// logger.info("Total price : " + totalPrice);
 		double discount = coupon.getDiscount();
-		double discountPrice = totalPrice-discount;
+		double discountPrice = totalPrice - discount;
 		String type = coupon.getType();
 		AfterCouponApplied afterCouponApplied = new AfterCouponApplied();
 		UpdatedCartDTO updatedCartDTO = new UpdatedCartDTO();
 		Details details = detailsRepository.findById(coupon.getCoupon_id()).orElse(new Details());
-		if(type.equals("cart-wise")){
-			//int size = details.getProduct().size();
-			int totalProduct = products.stream().reduce(0,(c,y)->c+(y.getQuantity()),Integer::sum);
-			double offerPerProduct = discount/totalProduct;
-			productMapList= productMapList.stream().map(x->{
+		if (type.equals("cart-wise")) {
+			// int size = details.getProduct().size();
+			int totalProduct = products.stream().reduce(0, (c, y) -> c + (y.getQuantity()), Integer::sum);
+			double offerPerProduct = discount / totalProduct;
+			productMapList = productMapList.stream().map(x -> {
 				int quantity = (int) x.get("quantity");
-		        x.put("total_discount", (double)(quantity*offerPerProduct));
-		        return x; // Return the modified map
-		    }).collect(Collectors.toList());
+				x.put("total_discount", (double) (quantity * offerPerProduct));
+				return x; // Return the modified map
+			}).collect(Collectors.toList());
 			afterCouponApplied.setItems(productMapList);
-			afterCouponApplied.setTotal_discount((int)discount);
-			afterCouponApplied.setFinal_price((int)discountPrice);
-			afterCouponApplied.setTotal_price((int)totalPrice);
-			
+			afterCouponApplied.setTotal_discount((int) discount);
+			afterCouponApplied.setFinal_price((int) discountPrice);
+			afterCouponApplied.setTotal_price((int) totalPrice);
+
 			updatedCartDTO.setUpdated_cart(afterCouponApplied);
-			
-		} else if(type.equals("bxgy")) {
+
+		} else if (type.equals("bxgy")) {
 			List<Product> productDetail = details.getProduct();
-			Product product = productDetail.stream().filter(x->x.isFree()==true).findFirst().orElse(null);
-			//can be handled based on null
+			Product product = productDetail.stream().filter(x -> x.isFree() == true).findFirst().orElse(null);
+			// can be handled based on null
 			int productId = product.getProductId();
-			productMapList= productMapList.stream().map(x->{				
-				if((int)x.get("product_id")==productId) {
+			productMapList = productMapList.stream().map(x -> {
+				if ((int) x.get("product_id") == productId) {
 					x.put("total_discount", discount);
 				}
-				return x; 
-		    }).collect(Collectors.toList());
-			
+				return x;
+			}).collect(Collectors.toList());
+
 			afterCouponApplied.setItems(productMapList);
-			afterCouponApplied.setTotal_discount((int)discount);
-			afterCouponApplied.setFinal_price((int)discountPrice);
-			afterCouponApplied.setTotal_price((int)totalPrice);
-			
+			afterCouponApplied.setTotal_discount((int) discount);
+			afterCouponApplied.setFinal_price((int) discountPrice);
+			afterCouponApplied.setTotal_price((int) totalPrice);
+
 			updatedCartDTO.setUpdated_cart(afterCouponApplied);
-			
-			
-		} else if(type.equals("product-wise")) {
+
+		} else if (type.equals("product-wise")) {
 			int productId = details.getProductId();
-			//Product discountProduct = productRepository.findById(productID).orElse(null);
-			productMapList= productMapList.stream().map(x->{				
-				if((int)x.get("product_id")==productId) {
+			// Product discountProduct = productRepository.findById(productID).orElse(null);
+			productMapList = productMapList.stream().map(x -> {
+				if ((int) x.get("product_id") == productId) {
 					x.put("total_discount", discount);
 				}
-				return x; 
-		    }).collect(Collectors.toList());
-			
+				return x;
+			}).collect(Collectors.toList());
+
 			afterCouponApplied.setItems(productMapList);
-			afterCouponApplied.setTotal_discount((int)discount);
-			afterCouponApplied.setFinal_price((int)discountPrice);
-			afterCouponApplied.setTotal_price((int)totalPrice);
-			
+			afterCouponApplied.setTotal_discount((int) discount);
+			afterCouponApplied.setFinal_price((int) discountPrice);
+			afterCouponApplied.setTotal_price((int) totalPrice);
+
 			updatedCartDTO.setUpdated_cart(afterCouponApplied);
 		}
-		
+
 		return updatedCartDTO;
 	}
-	
-//	{
-//        "coupon_id": 152,
-//        "details": {
-//            "discount": 10,
-//            "threshold": 100
-//        },
-//        "type": "cart-wise"
-//    },
-//    {
-//        "coupon_id": 153,
-//        "details": {
-//            "product_id": 1,
-//            "discount": 20
-//        },
-//        "type": "product-wise"
-//    },
-//    {
-//        "coupon_id": 154,
-//        "details": {
-//            "get_products": [
-//                {
-//                    "quantity": 1,
-//                    "product_id": 3
-//                }
-//            ],
-//            "buy_products": [
-//                {
-//                    "quantity": 3,
-//                    "product_id": 2
-//                },
-//                {
-//                    "quantity": 3,
-//                    "product_id": 1
-//                }
-//            ],
-//            "repition_limit": 2
-//        },
-//        "type": "bxgy"
-//    }
 
 	@SuppressWarnings("unchecked")
 	public String updateCouponById(int id, Map<String, Object> entity) {
-	    Details detail = detailsRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Details not found"));
-	    Map<String, Object> couponDetail = (Map<String, Object>) entity.get("details");
+		Details detail = detailsRepository.findById(id)
+				.orElseThrow(() -> new EntityNotFoundException("Details not found"));
+		Map<String, Object> couponDetail = (Map<String, Object>) entity.get("details");
 
-	    switch (detail.getType()) {
-	        case "cart-wise":
-	            updateCartWise(detail, couponDetail);
-	            break;
-	        case "product-wise":
-	            updateProductWise(detail, couponDetail);
-	            break;
-	        case "bxgy":
-	            updateBxgy(detail, couponDetail);
-	            break;
-	        default:
-	            throw new IllegalArgumentException("Unknown coupon type: " + detail.getType());
-	    }
+		switch (detail.getType()) {
+			case "cart-wise":
+				updateCartWise(detail, couponDetail);
+				break;
+			case "product-wise":
+				updateProductWise(detail, couponDetail);
+				break;
+			case "bxgy":
+				updateBxgy(detail, couponDetail);
+				break;
+			default:
+				throw new IllegalArgumentException("Unknown coupon type: " + detail.getType());
+		}
 
-	    return "Coupon Updated Successfully";
+		return "Coupon Updated Successfully";
 	}
 
 	private void updateCartWise(Details detail, Map<String, Object> couponDetail) {
-	    detail.setDiscount((int) couponDetail.get("discount"));
-	    detail.setThreshold((int) couponDetail.get("threshold"));
-	    detailsRepository.save(detail);
+		detail.setDiscount((int) couponDetail.get("discount"));
+		detail.setThreshold((int) couponDetail.get("threshold"));
+		detailsRepository.save(detail);
 	}
 
 	private void updateProductWise(Details detail, Map<String, Object> couponDetail) {
-	    detail.setDiscount((int) couponDetail.get("discount"));
-	    int productId = (int) couponDetail.get("product_id");
-	    Product product = productRepository.findById(productId)
-	            .orElseGet(() -> new Product(productId, 0, 0, false, 0, detail));
-	    product.setDiscount((int) couponDetail.get("discount"));
-	    productRepository.save(product);
-	    detailsRepository.save(detail);
+		detail.setDiscount((int) couponDetail.get("discount"));
+		int productId = (int) couponDetail.get("product_id");
+		Product product = productRepository.findById(productId)
+				.orElseGet(() -> new Product(productId, 0, 0, false, 0, detail));
+		product.setDiscount((int) couponDetail.get("discount"));
+		productRepository.save(product);
+		detailsRepository.save(detail);
 	}
 
 	private void updateBxgy(Details detail, Map<String, Object> couponDetail) {
-	    detail.setRepition_limit((int) couponDetail.get("repition_limit"));
-	    
-	    List<Map<String, Object>> buyProducts = (List<Map<String, Object>>) couponDetail
-	    		.getOrDefault("buy_products", new ArrayList<>());
-	    List<Map<String, Object>> getProducts = (List<Map<String, Object>>) couponDetail
-	    		.getOrDefault("get_products", new ArrayList<>());
-	    List<Product> currentProducts = new ArrayList<>(detail.getProduct());
-	    List<Product> toRemove = new ArrayList<>();
-	    for (Product product : currentProducts) {
-	        boolean isBuyProduct = updateProductIfExists(product, buyProducts, false);
-	        boolean isGetProduct = updateProductIfExists(product, getProducts, true);
+		detail.setRepition_limit((int) couponDetail.get("repition_limit"));
 
-	        if (!isBuyProduct && !isGetProduct) {
-	            toRemove.add(product);
-	        }
-	    }
-	    for (Product product : toRemove) {
-	        detail.getProduct().remove(product);
-	        currentProducts.remove(product);
-	        productRepository.delete(product);
-	    }
-	    addNewProducts(currentProducts, buyProducts, false ,detail);
-	    addNewProducts(currentProducts, getProducts, true ,detail);
-	    
-	    logger.info("currentProducts : " + currentProducts);
-	    detail.setProduct(currentProducts);
-	    detailsRepository.save(detail);
+		List<Map<String, Object>> buyProducts = (List<Map<String, Object>>) couponDetail
+				.getOrDefault("buy_products", new ArrayList<>());
+		List<Map<String, Object>> getProducts = (List<Map<String, Object>>) couponDetail
+				.getOrDefault("get_products", new ArrayList<>());
+		List<Product> currentProducts = new ArrayList<>(detail.getProduct());
+		List<Product> toRemove = new ArrayList<>();
+		for (Product product : currentProducts) {
+			boolean isBuyProduct = updateProductIfExists(product, buyProducts, false);
+			boolean isGetProduct = updateProductIfExists(product, getProducts, true);
+
+			if (!isBuyProduct && !isGetProduct) {
+				toRemove.add(product);
+			}
+		}
+		for (Product product : toRemove) {
+			detail.getProduct().remove(product);
+			currentProducts.remove(product);
+			productRepository.delete(product);
+		}
+		addNewProducts(currentProducts, buyProducts, false, detail);
+		addNewProducts(currentProducts, getProducts, true, detail);
+
+		logger.info("currentProducts : " + currentProducts);
+		detail.setProduct(currentProducts);
+		detailsRepository.save(detail);
 	}
 
 	private boolean updateProductIfExists(Product product, List<Map<String, Object>> products, boolean isFree) {
-	    for (Map<String, Object> productData : products) {
-	        if (product.getProductId() == (int) productData.get("product_id")) {
-	            product.setQuantity((int) productData.get("quantity"));
-	            product.setFree(isFree);
-	            productRepository.save(product);
-	            return true;
-	        }
-	    }
-	    return false;
+		for (Map<String, Object> productData : products) {
+			if (product.getProductId() == (int) productData.get("product_id")) {
+				product.setQuantity((int) productData.get("quantity"));
+				product.setFree(isFree);
+				productRepository.save(product);
+				return true;
+			}
+		}
+		return false;
 	}
 
-	private void addNewProducts(List<Product> currentProducts, List<Map<String, Object>> products, boolean isFree, Details detail) {
-	    products.forEach(productData -> {
-	        int productId = (int) productData.get("product_id");
-	        boolean exists = currentProducts.stream()
-	                .anyMatch(product -> product.getProductId() == productId);
-	        if (!exists) {
-	            Product newProduct = new Product(productId, (int) productData.get("quantity"), 0, isFree, 0, detail);
-	            currentProducts.add(newProduct);
-	            productRepository.save(newProduct);
-	        }
-	    });
+	private void addNewProducts(List<Product> currentProducts, List<Map<String, Object>> products, boolean isFree,
+			Details detail) {
+		products.forEach(productData -> {
+			int productId = (int) productData.get("product_id");
+			boolean exists = currentProducts.stream()
+					.anyMatch(product -> product.getProductId() == productId);
+			if (!exists) {
+				Product newProduct = new Product(productId, (int) productData.get("quantity"), 0, isFree, 0, detail);
+				currentProducts.add(newProduct);
+				productRepository.save(newProduct);
+			}
+		});
 	}
-
 
 	public Map<String, Object> deleteCouponById(int id) {
 		// TODO Auto-generated method stub

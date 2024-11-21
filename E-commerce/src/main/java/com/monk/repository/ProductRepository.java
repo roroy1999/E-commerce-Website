@@ -7,5 +7,4 @@ import com.monk.model.Product;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Integer> {
-    // You can add custom queries here if needed
 }

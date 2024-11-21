@@ -19,9 +19,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Entity
 public class Details {
-	
+
 	@Id
-	@SequenceGenerator(name = "couponId",sequenceName = "couponId")
+	@SequenceGenerator(name = "couponId", sequenceName = "couponId")
 	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "couponId")
 	private int couponId;
 	private String type;

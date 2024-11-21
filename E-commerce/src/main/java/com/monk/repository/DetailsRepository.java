@@ -10,7 +10,8 @@ import com.monk.model.Details;
 
 @Repository
 public interface DetailsRepository extends JpaRepository<Details, Integer> {
-	
+
 	public Optional<Details> findByProductId(int id);
+
 	public Optional<List<Details>> findByType(String value);
 }
