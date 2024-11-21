@@ -292,7 +292,7 @@ public class CouponService {
 		
 		CouponsDTO coupon = coupons.stream().filter(x->x.getCoupon_id()==id).findFirst().orElse(null);
 		double totalPrice = products.stream().reduce(0.0,(c,y)->c+(y.getPrice()*y.getQuantity()),Double::sum);
-		logger.info("Total price : " + totalPrice);
+//		logger.info("Total price : " + totalPrice);
 		double discount = coupon.getDiscount();
 		double discountPrice = totalPrice-discount;
 		String type = coupon.getType();
@@ -316,9 +316,41 @@ public class CouponService {
 			updatedCartDTO.setUpdated_cart(afterCouponApplied);
 			
 		} else if(type.equals("bxgy")) {
+			List<Product> productDetail = details.getProduct();
+			Product product = productDetail.stream().filter(x->x.isFree()==true).findFirst().orElse(null);
+			//can be handled based on null
+			int productId = product.getProductId();
+			productMapList= productMapList.stream().map(x->{				
+				if((int)x.get("product_id")==productId) {
+					x.put("total_discount", discount);
+				}
+				return x; 
+		    }).collect(Collectors.toList());
+			
+			afterCouponApplied.setItems(productMapList);
+			afterCouponApplied.setTotal_discount((int)discount);
+			afterCouponApplied.setFinal_price((int)discountPrice);
+			afterCouponApplied.setTotal_price((int)totalPrice);
+			
+			updatedCartDTO.setUpdated_cart(afterCouponApplied);
+			
 			
 		} else if(type.equals("product-wise")) {
+			int productId = details.getProductId();
+			//Product discountProduct = productRepository.findById(productID).orElse(null);
+			productMapList= productMapList.stream().map(x->{				
+				if((int)x.get("product_id")==productId) {
+					x.put("total_discount", discount);
+				}
+				return x; 
+		    }).collect(Collectors.toList());
 			
+			afterCouponApplied.setItems(productMapList);
+			afterCouponApplied.setTotal_discount((int)discount);
+			afterCouponApplied.setFinal_price((int)discountPrice);
+			afterCouponApplied.setTotal_price((int)totalPrice);
+			
+			updatedCartDTO.setUpdated_cart(afterCouponApplied);
 		}
 		
 		return updatedCartDTO;
