@@ -1,19 +1,18 @@
 package com.monk.controller;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.monk.dto.ApplicableCoupons;
+import com.monk.dto.UpdatedCartDTO;
 import com.monk.model.Details;
 import com.monk.service.CouponService;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -43,12 +42,18 @@ public class CouponController {
 	@PostMapping("/applicable-coupons")
 	public ApplicableCoupons applicableCoupons(@RequestBody Map<String, Object> entity) {
 		//TODO: process POST request
-		//System.out.println(entity);
-		logger.info("Recieved Coupon is :{}",entity);
+		logger.info("Recieved Items are :{}",entity);
 		
 		return couponService.applicableCoupons(entity);
+	}
+	
+	@PostMapping(path="/apply-coupon/{id}")
+	public UpdatedCartDTO applyCouponById(@RequestBody Map<String, Object> entity, @PathVariable("id") int id) {
+		//TODO: process POST request
+		logger.info("Recieved cart items are :{} and applied coupon is {}",entity,id);
 		
-		//return couponService.savaCoupon(entity);
+		
+		return couponService.applyCouponsById(entity,id);
 	}
 	
 	@GetMapping("/coupons")

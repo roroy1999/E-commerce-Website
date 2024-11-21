@@ -10,8 +10,10 @@ import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.monk.dto.AfterCouponApplied;
 import com.monk.dto.ApplicableCoupons;
 import com.monk.dto.CouponsDTO;
+import com.monk.dto.UpdatedCartDTO;
 import com.monk.model.Details;
 import com.monk.model.Product;
 import com.monk.repository.DetailsRepository;
@@ -140,9 +142,7 @@ public class CouponService {
 		//logger.info("products : " + products);
 		ApplicableCoupons applicableCoupons = new ApplicableCoupons();
 
-		for(Product product:products) {
-			getAllApplicableCoupons(product);
-		}
+
 		List<CouponsDTO> couponsDTOs = new ArrayList<>();
 		couponsDTOs.addAll(bxgyCoupon(products));
 		couponsDTOs.add(cartWiseCoupon(products));
@@ -152,13 +152,6 @@ public class CouponService {
 		applicableCoupons.setApplicable_coupons(couponsDTOs);
 		
 		return applicableCoupons;
-	}
-
-	private void getAllApplicableCoupons(Product product) {
-		// TODO Auto-generated method stub
-		//Product productFromDB = productRepository.findById(product.getProductId()).orElse(new Product());
-		//logger.info("products : " + productFromDB);
-		//logger.info("products : " + productFromDB.getDetails());
 	}
 	
 	public CouponsDTO cartWiseCoupon(List<Product> products) {
@@ -244,6 +237,11 @@ public class CouponService {
 		return couponsDTOs;
 	}
 
+//	{
+//        "coupon_id": 153,
+//        "type": "product-wise",
+//        "discount": 2
+//    }
 
 	public List<CouponsDTO> productWiseCoupon(List<Product> products) {
 		List<CouponsDTO> couponsDTOs = new ArrayList<>();
@@ -268,6 +266,62 @@ public class CouponService {
 		}
 		
 		return couponsDTOs;
+	}
+
+	@SuppressWarnings("unchecked")
+	public UpdatedCartDTO applyCouponsById(Map<String, Object> entity, int id) {
+		Map<String,Object> cart = (Map<String, Object>) entity.getOrDefault("cart", new HashMap<>());
+		List<Map<String,Object>> items =  (List<Map<String,Object>>) cart.getOrDefault("items", new ArrayList<>());
+		List<Map<String, Object>> productMapList = new ArrayList<>();
+		List<Product> products = new ArrayList<>();
+		for (Map<String, Object> item : items) {
+			Map<String, Object> productMap = new HashMap<>();
+			Product product = new Product();
+			product.setProductId((int)item.getOrDefault("product_id",0));
+			productMap.put("product_id",product.getProductId());
+			product.setPrice((int) item.getOrDefault("price",0));
+			productMap.put("price",product.getPrice());
+			product.setQuantity((int) item.getOrDefault("quantity",0));
+			productMap.put("quantity",product.getQuantity());
+			productMap.put("total_discount", 0);
+			products.add(product);
+			productMapList.add(productMap);
+		}
+		ApplicableCoupons applicableCoupons = applicableCoupons(entity);
+		List<CouponsDTO> coupons =  applicableCoupons.getApplicable_coupons();
+		
+		CouponsDTO coupon = coupons.stream().filter(x->x.getCoupon_id()==id).findFirst().orElse(null);
+		double totalPrice = products.stream().reduce(0.0,(c,y)->c+(y.getPrice()*y.getQuantity()),Double::sum);
+		logger.info("Total price : " + totalPrice);
+		double discount = coupon.getDiscount();
+		double discountPrice = totalPrice-discount;
+		String type = coupon.getType();
+		AfterCouponApplied afterCouponApplied = new AfterCouponApplied();
+		UpdatedCartDTO updatedCartDTO = new UpdatedCartDTO();
+		Details details = detailsRepository.findById(coupon.getCoupon_id()).orElse(new Details());
+		if(type.equals("cart-wise")){
+			//int size = details.getProduct().size();
+			int totalProduct = products.stream().reduce(0,(c,y)->c+(y.getQuantity()),Integer::sum);
+			double offerPerProduct = discount/totalProduct;
+			productMapList= productMapList.stream().map(x->{
+				int quantity = (int) x.get("quantity");
+		        x.put("total_discount", (double)(quantity*offerPerProduct));
+		        return x; // Return the modified map
+		    }).collect(Collectors.toList());
+			afterCouponApplied.setItems(productMapList);
+			afterCouponApplied.setTotal_discount((int)discount);
+			afterCouponApplied.setFinal_price((int)discountPrice);
+			afterCouponApplied.setTotal_price((int)totalPrice);
+			
+			updatedCartDTO.setUpdated_cart(afterCouponApplied);
+			
+		} else if(type.equals("bxgy")) {
+			
+		} else if(type.equals("product-wise")) {
+			
+		}
+		
+		return updatedCartDTO;
 	}
 
 }
