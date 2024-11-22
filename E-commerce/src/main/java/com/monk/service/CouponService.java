@@ -20,6 +20,7 @@ import com.monk.model.Details;
 import com.monk.model.Product;
 import com.monk.repository.DetailsRepository;
 import com.monk.repository.ProductRepository;
+import com.monk.utils.CouponConstants;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -43,7 +44,7 @@ public class CouponService {
 		try {
 			detail = detailsRepository.findById(id).orElse(null);
 			if (detail == null) {
-				return new ResponseEntity<String>("Coupon Not Found", HttpStatus.BAD_REQUEST);
+				return new ResponseEntity<String>(CouponConstants.COUPON_NOT_FOUND, HttpStatus.BAD_REQUEST);
 			}
 		} catch (Exception e) {
 			logger.error("Error in getCouponById(): {}", e);
@@ -72,36 +73,36 @@ public class CouponService {
 		try {
 			coupon = new HashMap<>();
 			Map<String, Object> couponDetail = new HashMap<>();
-			coupon.put("type", type);
-			coupon.put("coupon_id", detail.getCouponId());
+			coupon.put(CouponConstants.TYPE, type);
+			coupon.put(CouponConstants.COUPON_ID, detail.getCouponId());
 			switch (type) {
-				case "cart-wise":
-					couponDetail.put("threshold", detail.getThreshold());
-					couponDetail.put("discount", detail.getDiscount());
+				case CouponConstants.CART_WISE:
+					couponDetail.put(CouponConstants.THRESHOLD, detail.getThreshold());
+					couponDetail.put(CouponConstants.DISCOUNT, detail.getDiscount());
 					break;
-				case "product-wise":
-					couponDetail.put("product_id", detail.getProductId());
-					couponDetail.put("discount", detail.getDiscount());
+				case CouponConstants.PRODUCT_WISE:
+					couponDetail.put(CouponConstants.PRODUCT_ID, detail.getProductId());
+					couponDetail.put(CouponConstants.DISCOUNT, detail.getDiscount());
 					break;
 				case "bxgy":
 					List<Map<String, Integer>> getProducts = new ArrayList<>();
 					List<Map<String, Integer>> buyProducts = new ArrayList<>();
 					for (Product product : detail.getProduct()) {
 						Map<String, Integer> productDetail = Map.of(
-								"product_id", product.getProductId(),
-								"quantity", product.getQuantity());
+								CouponConstants.PRODUCT_ID, product.getProductId(),
+								CouponConstants.QUANTITY, product.getQuantity());
 						if (product.isFree()) {
 							getProducts.add(productDetail);
 						} else {
 							buyProducts.add(productDetail);
 						}
 					}
-					couponDetail.put("get_products", getProducts);
-					couponDetail.put("buy_products", buyProducts);
-					couponDetail.put("repition_limit", detail.getRepition_limit());
+					couponDetail.put(CouponConstants.GET_PRODUCTS, getProducts);
+					couponDetail.put(CouponConstants.BUY_PRODUCTS, buyProducts);
+					couponDetail.put(CouponConstants.REPETITION_LIMIT, detail.getRepition_limit());
 					break;
 				default:
-					throw new IllegalArgumentException("Unknown coupon type: " + type);
+					throw new IllegalArgumentException(CouponConstants.UNKNOWN_COUPON_TYPE + type);
 			}
 			coupon.put("details", couponDetail);
 		} catch (Exception e) {
@@ -114,7 +115,7 @@ public class CouponService {
 		Details details = createDetails(entity);
 		logger.info("Details is :{}", details);
 		if (details == null) {
-			return new ResponseEntity<String>("Details is Empty", HttpStatus.BAD_REQUEST);
+			return new ResponseEntity<String>(CouponConstants.DETAILS_IS_EMPTY, HttpStatus.BAD_REQUEST);
 		}
 		return saveBasedOnType(details);
 
@@ -122,10 +123,13 @@ public class CouponService {
 
 	public ResponseEntity<String> saveBasedOnType(Details details) {
 		try {
-			if (details.getType().equals("NoType") || (!details.getType().equals("cart-wise")
-					&& !details.getType().equals("product-wise") && !details.getType().equals("bxgy"))) {
-				return new ResponseEntity<String>("Invalide Type", HttpStatus.BAD_REQUEST);
-			} else if (details.getType().equals("product-wise") && details.getProduct() != new ArrayList<Product>()) {
+			if (details.getType().equals(CouponConstants.NO_TYPE)
+					|| (!details.getType().equals(CouponConstants.CART_WISE)
+							&& !details.getType().equals(CouponConstants.PRODUCT_WISE)
+							&& !details.getType().equals("bxgy"))) {
+				return new ResponseEntity<String>(CouponConstants.INVALID_TYPE, HttpStatus.BAD_REQUEST);
+			} else if (details.getType().equals(CouponConstants.PRODUCT_WISE)
+					&& details.getProduct() != new ArrayList<Product>()) {
 				int id = details.getProduct().get(0).getProductId();
 				Product product = productRepository.findById(id).orElse(new Product());
 				product.setProductId(id);
@@ -135,14 +139,14 @@ public class CouponService {
 				Details detail_old = detailsRepository.findByProductId(id).orElse(details);
 				detail_old.setProduct(new ArrayList<Product>());
 				detailsRepository.save(detail_old);
-				return new ResponseEntity<String>("Product Discount was Added", HttpStatus.CREATED);
+				return new ResponseEntity<String>(CouponConstants.PRODUCT_DISCOUNT_ADDED, HttpStatus.CREATED);
 			}
 
 			detailsRepository.save(details);
 		} catch (Exception e) {
 			logger.error("Error in saveBasedOnType(): {}", e);
 		}
-		return new ResponseEntity<String>("Coupon is Added", HttpStatus.CREATED);
+		return new ResponseEntity<String>(CouponConstants.COUPON_ADDED, HttpStatus.CREATED);
 
 	}
 
@@ -150,18 +154,19 @@ public class CouponService {
 	public Details createDetails(Map<String, Object> entity) {
 		Details details = new Details();
 		try {
-			String type = (String) entity.getOrDefault("type", "NoType");
+			String type = (String) entity.getOrDefault(CouponConstants.TYPE, CouponConstants.NO_TYPE);
 			Map<String, Object> detail = (Map<String, Object>) entity.getOrDefault("details", null);
 			if (detail != null) {
-				int discount = (int) detail.getOrDefault("discount", 0);
-				int threshold = (int) detail.getOrDefault("threshold", 0);
-				int repition_limit = (int) detail.getOrDefault("repition_limit", 0);
-				List<Map<String, Object>> buyProducts = (List<Map<String, Object>>) detail.getOrDefault("buy_products",
+				int discount = (int) detail.getOrDefault(CouponConstants.DISCOUNT, 0);
+				int threshold = (int) detail.getOrDefault(CouponConstants.THRESHOLD, 0);
+				int repition_limit = (int) detail.getOrDefault(CouponConstants.REPETITION_LIMIT, 0);
+				List<Map<String, Object>> buyProducts = (List<Map<String, Object>>) detail.getOrDefault(
+						CouponConstants.BUY_PRODUCTS,
 						new ArrayList<>());
-				List<Map<String, Object>> getProducts = (List<Map<String, Object>>) detail.getOrDefault("get_products",
+				List<Map<String, Object>> getProducts = (List<Map<String, Object>>) detail.getOrDefault(
+						CouponConstants.GET_PRODUCTS,
 						new ArrayList<>());
 				List<Product> products = new ArrayList<>();
-				logger.info("Products are : " + products);
 				details.setType(type);
 				details.setRepition_limit(repition_limit);
 				details.setThreshold(threshold);
@@ -172,9 +177,9 @@ public class CouponService {
 				for (Map<String, Object> item : buyProducts) {
 					products.add(setProduct(item, false, details));
 				}
-				if ((int) detail.getOrDefault("product_id", 0) != 0) {
+				if ((int) detail.getOrDefault(CouponConstants.PRODUCT_ID, 0) != 0) {
 					Product product = new Product();
-					int productId = (int) detail.getOrDefault("product_id", 0);
+					int productId = (int) detail.getOrDefault(CouponConstants.PRODUCT_ID, 0);
 					product.setProductId(productId);
 					product.setDiscount(discount);
 					products.add(product);
@@ -192,13 +197,13 @@ public class CouponService {
 		Product product = null;
 		try {
 
-			product = productRepository.findById((int) item.get("product_id"))
+			product = productRepository.findById((int) item.get(CouponConstants.PRODUCT_ID))
 					.orElse(new Product());
-			product.setProductId((int) item.getOrDefault("product_id", 0));
+			product.setProductId((int) item.getOrDefault(CouponConstants.PRODUCT_ID, 0));
 			product.setDetails(details);
 			product.setFree(isFree);
-			product.setPrice((int) item.getOrDefault("price", 0));
-			product.setQuantity((int) item.getOrDefault("quantity", 0));
+			product.setPrice((int) item.getOrDefault(CouponConstants.PRICE, 0));
+			product.setQuantity((int) item.getOrDefault(CouponConstants.QUANTITY, 0));
 		} catch (Exception e) {
 			logger.error("Error in setProduct(): {}", e);
 		}
@@ -210,17 +215,18 @@ public class CouponService {
 		ApplicableCoupons applicableCoupons = null;
 		try {
 			applicableCoupons = new ApplicableCoupons();
-			Map<String, Object> cart = (Map<String, Object>) entity.getOrDefault("cart", null);
-			List<Map<String, Object>> items = (List<Map<String, Object>>) cart.getOrDefault("items", null);
+			Map<String, Object> cart = (Map<String, Object>) entity.getOrDefault(CouponConstants.CART, null);
+			List<Map<String, Object>> items = (List<Map<String, Object>>) cart.getOrDefault(CouponConstants.ITEMS,
+					null);
 			if (cart == null || items == null) {
-				return new ResponseEntity<String>("Please Provide a valid Cart", HttpStatus.BAD_REQUEST);
+				return new ResponseEntity<String>(CouponConstants.PLEASE_PROVIDE_VALID_CART, HttpStatus.BAD_REQUEST);
 			}
 			List<Product> products = new ArrayList<>();
 			for (Map<String, Object> item : items) {
 				Product product = new Product();
-				product.setProductId((int) item.getOrDefault("product_id", 0));
-				product.setPrice((int) item.getOrDefault("price", 0));
-				product.setQuantity((int) item.getOrDefault("quantity", 0));
+				product.setProductId((int) item.getOrDefault(CouponConstants.PRODUCT_ID, 0));
+				product.setPrice((int) item.getOrDefault(CouponConstants.PRICE, 0));
+				product.setQuantity((int) item.getOrDefault(CouponConstants.QUANTITY, 0));
 				products.add(product);
 			}
 
@@ -241,8 +247,8 @@ public class CouponService {
 		CouponsDTO couponsDTO = null;
 		try {
 			couponsDTO = new CouponsDTO();
-			List<Details> detail_old = detailsRepository.findByType("cart-wise").orElse(new ArrayList<Details>());
-			logger.info("details cart wise : " + detail_old.get(0));
+			List<Details> detail_old = detailsRepository.findByType(CouponConstants.CART_WISE)
+					.orElse(new ArrayList<Details>());
 			Details details = detail_old.get(0);
 			double total = 0;
 			double threshold = details.getThreshold();
@@ -272,7 +278,7 @@ public class CouponService {
 	public List<CouponsDTO> bxgyCoupon(List<Product> products) {
 		List<CouponsDTO> couponsDTOs = new ArrayList<>();
 		try {
-			List<Details> details = detailsRepository.findByType("bxgy").orElse(new ArrayList<Details>());
+			List<Details> details = detailsRepository.findByType(CouponConstants.BXGY).orElse(new ArrayList<Details>());
 			Map<Integer, Details> uniqueDetailsMap = details.stream()
 					.collect(Collectors.toMap(Details::getCouponId, detail -> detail,
 							(existing, replacement) -> existing));
@@ -307,7 +313,7 @@ public class CouponService {
 								.orElse(null);
 						if (couponsDTO_Old == null) {
 							CouponsDTO couponsDTO = new CouponsDTO();
-							couponsDTO.setType("bxgy");
+							couponsDTO.setType(CouponConstants.BXGY);
 							couponsDTO.setDiscount(discount);
 							couponsDTO.setCoupon_id(presentDetails.getCouponId());
 							couponsDTOs.add(couponsDTO);
@@ -357,10 +363,11 @@ public class CouponService {
 		UpdatedCartDTO updatedCartDTO = new UpdatedCartDTO();
 		try {
 
-			Map<String, Object> cart = (Map<String, Object>) entity.getOrDefault("cart", null);
-			List<Map<String, Object>> items = (List<Map<String, Object>>) cart.getOrDefault("items", null);
+			Map<String, Object> cart = (Map<String, Object>) entity.getOrDefault(CouponConstants.CART, null);
+			List<Map<String, Object>> items = (List<Map<String, Object>>) cart.getOrDefault(CouponConstants.ITEMS,
+					null);
 			if (cart == null || items == null) {
-				return new ResponseEntity<String>("Please Provide a valid Cart", HttpStatus.BAD_REQUEST);
+				return new ResponseEntity<String>(CouponConstants.PLEASE_PROVIDE_VALID_CART, HttpStatus.BAD_REQUEST);
 			}
 			List<Map<String, Object>> productMapList = new ArrayList<>();
 			List<Product> products = new ArrayList<>();
@@ -389,7 +396,7 @@ public class CouponService {
 				updatedCartDTO.setUpdated_cart(applyCouponBasedOnType(type, offerPerProduct, productMapList, discount,
 						discountPrice, totalPrice, afterCouponApplied, 0));
 
-			} else if (type.equals("bxgy")) {
+			} else if (type.equals(CouponConstants.BXGY)) {
 				List<Product> productDetail = details.getProduct();
 				Product product = productDetail.stream().filter(x -> x.isFree() == true).findFirst().orElse(null);
 				// can be handled based on null
@@ -397,7 +404,7 @@ public class CouponService {
 				updatedCartDTO.setUpdated_cart(applyCouponBasedOnType(type, 0, productMapList, discount, discountPrice,
 						totalPrice, afterCouponApplied, productId));
 
-			} else if (type.equals("product-wise")) {
+			} else if (type.equals(CouponConstants.PRODUCT_WISE)) {
 				int productId = details.getProductId();
 				// Product discountProduct = productRepository.findById(productID).orElse(null);
 				updatedCartDTO.setUpdated_cart(applyCouponBasedOnType(type, 0, productMapList, discount, discountPrice,
@@ -413,13 +420,13 @@ public class CouponService {
 	private Map<String, Object> mapProductsAndProductMap(Map<String, Object> item, List<Product> products) {
 		Map<String, Object> productMap = new HashMap<>();
 		Product product = new Product();
-		product.setProductId((int) item.getOrDefault("product_id", 0));
-		productMap.put("product_id", product.getProductId());
-		product.setPrice((int) item.getOrDefault("price", 0));
-		productMap.put("price", product.getPrice());
-		product.setQuantity((int) item.getOrDefault("quantity", 0));
-		productMap.put("quantity", product.getQuantity());
-		productMap.put("total_discount", 0);
+		product.setProductId((int) item.getOrDefault(CouponConstants.PRODUCT_ID, 0));
+		productMap.put(CouponConstants.PRODUCT_ID, product.getProductId());
+		product.setPrice((int) item.getOrDefault(CouponConstants.PRICE, 0));
+		productMap.put(CouponConstants.PRICE, product.getPrice());
+		product.setQuantity((int) item.getOrDefault(CouponConstants.QUANTITY, 0));
+		productMap.put(CouponConstants.QUANTITY, product.getQuantity());
+		productMap.put(CouponConstants.TOTAL_DISCOUNT, 0);
 		products.add(product);
 		return productMap;
 	}
@@ -428,16 +435,16 @@ public class CouponService {
 			List<Map<String, Object>> productMapList,
 			double discount, double discountPrice, double totalPrice, AfterCouponApplied afterCouponApplied,
 			int productId) {
-		if (type.equals("cart-wise")) {
+		if (type.equals(CouponConstants.CART_WISE)) {
 			productMapList = productMapList.stream().map(x -> {
-				int quantity = (int) x.get("quantity");
-				x.put("total_discount", (double) (quantity * offerPerProduct));
+				int quantity = (int) x.get(CouponConstants.QUANTITY);
+				x.put(CouponConstants.TOTAL_DISCOUNT, (double) (quantity * offerPerProduct));
 				return x;
 			}).collect(Collectors.toList());
 		} else {
 			productMapList = productMapList.stream().map(x -> {
-				if ((int) x.get("product_id") == productId) {
-					x.put("total_discount", discount);
+				if ((int) x.get(CouponConstants.PRODUCT_ID) == productId) {
+					x.put(CouponConstants.TOTAL_DISCOUNT, discount);
 				}
 				return x;
 			}).collect(Collectors.toList());
@@ -453,59 +460,58 @@ public class CouponService {
 	public ResponseEntity<String> updateCouponById(int id, Map<String, Object> entity) {
 		try {
 			Details detail = detailsRepository.findById(id)
-					.orElseThrow(() -> new EntityNotFoundException("Details not found"));
+					.orElseThrow(() -> new EntityNotFoundException(CouponConstants.DETAILS_NOT_FOUND));
 			Map<String, Object> couponDetail = (Map<String, Object>) entity.get("details");
 
 			switch (detail.getType()) {
-				case "cart-wise":
+				case CouponConstants.CART_WISE:{					
 					updateCartWise(detail, couponDetail);
-					break;
-				case "product-wise":
+					return new ResponseEntity<String>(CouponConstants.COUPON_UPDATED_SUCCESSFULLY, HttpStatus.ACCEPTED);
+				}
+				case CouponConstants.PRODUCT_WISE:{					
 					updateProductWise(detail, couponDetail);
-					break;
-				case "bxgy":
+					return new ResponseEntity<String>(CouponConstants.COUPON_UPDATED_SUCCESSFULLY, HttpStatus.ACCEPTED);
+				}
+				case CouponConstants.BXGY:{					
 					updateBxgy(detail, couponDetail);
-					break;
+					return new ResponseEntity<String>(CouponConstants.COUPON_UPDATED_SUCCESSFULLY, HttpStatus.ACCEPTED);
+				}
 				default:
-					throw new IllegalArgumentException("Unknown coupon type: " + detail.getType());
+					throw new IllegalArgumentException(CouponConstants.UNKNOWN_COUPON_TYPE + detail.getType());
 
 			}
 		} catch (Exception e) {
 			logger.error("Error in updateCouponById(): {}", e);
 		}
 
-		return new ResponseEntity<String>("Coupon Updated Successfully", HttpStatus.ACCEPTED);
+		return new ResponseEntity<String>(CouponConstants.COUPON_NOT_UPDATED_SUCCESSFULLY, HttpStatus.BAD_REQUEST);
 	}
 
-	private void updateCartWise(Details detail, Map<String, Object> couponDetail) {
-		detail.setDiscount((int) couponDetail.get("discount"));
-		detail.setThreshold((int) couponDetail.get("threshold"));
+	private void updateCartWise(Details detail, Map<String, Object> couponDetail) throws Exception{
+		detail.setDiscount((int) couponDetail.get(CouponConstants.DISCOUNT));
+		detail.setThreshold((int) couponDetail.get(CouponConstants.THRESHOLD));
 		detailsRepository.save(detail);
 	}
 
-	private void updateProductWise(Details detail, Map<String, Object> couponDetail) {
-		try {
-			detail.setDiscount((int) couponDetail.get("discount"));
-			int productId = (int) couponDetail.get("product_id");
+	private void updateProductWise(Details detail, Map<String, Object> couponDetail) throws Exception{
+
+			detail.setDiscount((int) couponDetail.get(CouponConstants.DISCOUNT));
+			int productId = (int) couponDetail.get(CouponConstants.PRODUCT_ID);
 			Product product = productRepository.findById(productId)
 					.orElseGet(() -> new Product(productId, 0, 0, false, 0, detail));
-			product.setDiscount((int) couponDetail.get("discount"));
+			product.setDiscount((int) couponDetail.get(CouponConstants.DISCOUNT));
 			productRepository.save(product);
 			detailsRepository.save(detail);
-		} catch (Exception e) {
-			logger.error("Error in updateProductWise(): {}", e);
-		}
 	}
 
 	@SuppressWarnings("unchecked")
-	private void updateBxgy(Details detail, Map<String, Object> couponDetail) {
-		try {
-			detail.setRepition_limit((int) couponDetail.get("repition_limit"));
+	private void updateBxgy(Details detail, Map<String, Object> couponDetail) throws Exception{
+			detail.setRepition_limit((int) couponDetail.get(CouponConstants.REPETITION_LIMIT));
 
 			List<Map<String, Object>> buyProducts = (List<Map<String, Object>>) couponDetail
-					.getOrDefault("buy_products", new ArrayList<>());
+					.getOrDefault(CouponConstants.BUY_PRODUCTS, new ArrayList<>());
 			List<Map<String, Object>> getProducts = (List<Map<String, Object>>) couponDetail
-					.getOrDefault("get_products", new ArrayList<>());
+					.getOrDefault(CouponConstants.GET_PRODUCTS, new ArrayList<>());
 			List<Product> currentProducts = new ArrayList<>(detail.getProduct());
 			List<Product> toRemove = new ArrayList<>();
 			for (Product product : currentProducts) {
@@ -527,16 +533,13 @@ public class CouponService {
 			logger.info("currentProducts : " + currentProducts);
 			detail.setProduct(currentProducts);
 			detailsRepository.save(detail);
-		} catch (Exception e) {
-			logger.error("Error in updateBxgy(): {}", e);
-		}
 	}
 
 	private boolean updateProductIfExists(Product product, List<Map<String, Object>> products, boolean isFree) {
 		try {
 			for (Map<String, Object> productData : products) {
-				if (product.getProductId() == (int) productData.get("product_id")) {
-					product.setQuantity((int) productData.get("quantity"));
+				if (product.getProductId() == (int) productData.get(CouponConstants.PRODUCT_ID)) {
+					product.setQuantity((int) productData.get(CouponConstants.QUANTITY));
 					product.setFree(isFree);
 					productRepository.save(product);
 					return true;
@@ -552,11 +555,12 @@ public class CouponService {
 			Details detail) {
 		try {
 			products.forEach(productData -> {
-				int productId = (int) productData.get("product_id");
+				int productId = (int) productData.get(CouponConstants.PRODUCT_ID);
 				boolean exists = currentProducts.stream()
 						.anyMatch(product -> product.getProductId() == productId);
 				if (!exists) {
-					Product newProduct = new Product(productId, (int) productData.get("quantity"), 0, isFree, 0,
+					Product newProduct = new Product(productId, (int) productData.get(CouponConstants.QUANTITY), 0,
+							isFree, 0,
 							detail);
 					currentProducts.add(newProduct);
 					productRepository.save(newProduct);
@@ -570,7 +574,7 @@ public class CouponService {
 	public ResponseEntity<String> deleteCouponById(int id) {
 		try {
 			Details detail = detailsRepository.findById(id)
-					.orElseThrow(() -> new IllegalArgumentException("Invalid Coupon"));
+					.orElseThrow(() -> new IllegalArgumentException(CouponConstants.INVALID_COUPON));
 			switch (detail.getType()) {
 				case "cart-wise":
 					return new ResponseEntity<String>(deleteCartWiseCoupon(detail), HttpStatus.OK);
@@ -579,26 +583,26 @@ public class CouponService {
 				case "bxgy":
 					return new ResponseEntity<String>(deleteBxgyCoupon(detail), HttpStatus.OK);
 				default:
-					throw new IllegalArgumentException("Unknown coupon type: " + detail.getType());
+					throw new IllegalArgumentException(CouponConstants.UNKNOWN_COUPON_TYPE + detail.getType());
 			}
 		} catch (Exception e) {
 			logger.error("Error in updateProductIfExists(): {}", e);
 		}
-		return new ResponseEntity<String>("Coupon Not Deleted", HttpStatus.BAD_GATEWAY);
+		return new ResponseEntity<String>(CouponConstants.COUPON_NOT_DELETED_SUCCESSFULLY, HttpStatus.BAD_GATEWAY);
 	}
 
 	public String deleteProductWiseCoupon(Details detail) {
 		try {
 			Product product = productRepository.findById(detail.getProductId())
-					.orElseThrow(() -> new EntityNotFoundException("Product not found"));
+					.orElseThrow(() -> new EntityNotFoundException(CouponConstants.PRODUCT_NOT_FOUND));
 			product.setDiscount(0);
 			productRepository.save(product);
 			detailsRepository.delete(detail);
-			return "Coupon Deleted Successfully";
+			return CouponConstants.COUPON_DELETED_SUCCESSFULLY;
 		} catch (Exception e) {
 			logger.error("Error in deleteProductWiseCoupon(): {}", e);
 		}
-		return "Coupon Not Deleted Successfully";
+		return CouponConstants.COUPON_NOT_DELETED_SUCCESSFULLY;
 	}
 
 	public String deleteBxgyCoupon(Details detail) {
@@ -612,41 +616,41 @@ public class CouponService {
 			productRepository.saveAll(products);
 			detail.setProduct(null);
 			detailsRepository.delete(detail);
-			return "Coupon Deleted Successfully";
+			return CouponConstants.COUPON_DELETED_SUCCESSFULLY;
 		} catch (Exception e) {
 			logger.error("Error in deleteBxgyCoupon(): {}", e);
 		}
-		return "Coupon Not Deleted Successfully";
+		return CouponConstants.COUPON_NOT_DELETED_SUCCESSFULLY;
 	}
 
 	public String deleteCartWiseCoupon(Details detail) {
 		try {
 			detailsRepository.delete(detail);
-			return "Coupon Deleted Successfully";
+			return CouponConstants.COUPON_DELETED_SUCCESSFULLY;
 		} catch (Exception e) {
 			// TODO: handle exception
 			logger.error("Error in deleteCartWiseCoupon(): {}", e);
 		}
-		return "Coupon Not Deleted Successfully";
+		return CouponConstants.COUPON_NOT_DELETED_SUCCESSFULLY;
 	}
 
 	public ResponseEntity<?> deleteProduct(int id) {
 		try {
 			// TODO Auto-generated method stub
 			Product product = productRepository.findById(id)
-					.orElseThrow(() -> new EntityNotFoundException("Product ID id Invalid"));
+					.orElseThrow(() -> new EntityNotFoundException(CouponConstants.PRODUCT_ID_INVALID));
 			if (product.getDetails() == null) {
 				productRepository.delete(product);
 			} else {
-				return new ResponseEntity<String>("This Product is Associated to a Coupon and cant be deleted",
+				return new ResponseEntity<String>(CouponConstants.PRODUCT_ASSOCIATED_TO_COUPON,
 						HttpStatus.BAD_REQUEST);
 			}
-			return new ResponseEntity<String>("Product Deleted Successfully", HttpStatus.OK);
+			return new ResponseEntity<String>(CouponConstants.PRODUCT_DELETED_SUCCESSFULLY, HttpStatus.OK);
 		} catch (Exception e) {
 			// TODO: handle exception
 			logger.error("Error in deleteProduct(): {}", e);
 		}
-		return new ResponseEntity<String>("Product Not Deleted", HttpStatus.BAD_REQUEST);
+		return new ResponseEntity<String>(CouponConstants.PRODUCT_NOT_DELETED, HttpStatus.BAD_REQUEST);
 	}
 
 	public ResponseEntity<?> getProducts() {
@@ -656,7 +660,7 @@ public class CouponService {
 		} catch (Exception e) {
 			logger.error("Error in deleteProduct(): {}", e);
 		}
-		return new ResponseEntity<String>("Unable To Fetch Product", HttpStatus.BAD_REQUEST);
+		return new ResponseEntity<String>(CouponConstants.UNABLE_TO_FETCH_PRODUCT, HttpStatus.BAD_REQUEST);
 	}
 
 }
