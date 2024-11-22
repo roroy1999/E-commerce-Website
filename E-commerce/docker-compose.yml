@@ -30,6 +30,16 @@ services:
       - postgres
     restart: unless-stopped
 
+  e-commerce:
+    container_name: e-commerce
+    image: robinroy1999/e-commerce:0.0.1-SNAPSHOT
+    ports:
+      - "8082:8080"
+    networks:
+      - postgres
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+
 networks:
   postgres:
     driver: bridge
